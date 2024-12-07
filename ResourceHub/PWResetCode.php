@@ -1,37 +1,74 @@
 <?php
-require 'db.php';
-
 session_start();
+require 'db.php'; // Your database connection
+require 'vendor/autoload.php';
 
-if (isset($_SESSION['user_id'])) {
-    header("Location: HomePage.php");
-}
+use Dotenv\Dotenv;
+use \Mailjet\Resources;
+
+// Initialize Dotenv
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+// Fetch API keys from environment variables
+$apiKey = $_ENV['API_GENERAL_KEY'];
+$apiSecret = $_ENV['API_SECRET_KEY'];
 
 $message = '';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get email from form input
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
 
-    $sql = "SELECT * FROM users WHERE email = :email";
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([':email' => $email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($email) {
+        // Check if the email exists in the users table
+        $stmt = $pdo->prepare("SELECT email FROM users WHERE email = :email");
+        $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch();
 
-    // if ($user && password_verify($password, $user['password'])) {
-    //     $_SESSION['user_id'] = $user['id'];
-    //     $_SESSION['role'] = $user['role'];
-    
-    //     // Redirect based on user role
-    //     if ($_SESSION['role'] === 'admin') {
-    //         header("Location: AdminPanel.php");
-    //     } else {
-    //         header("Location: HomePage.php");
-    //     }
-    //     exit();
-    // } else {
-    //     $message = 'Invalid email or password.';
-    // }
+        if ($user) {
+            // Generate a random 6-digit code
+            $resetCode = random_int(100000, 999999);
+
+            // Store the reset code in the session (or database if needed)
+            $_SESSION['reset_code'] = $resetCode;
+            $_SESSION['reset_email'] = $email;
+
+            // Prepare email data
+            $mj = new \Mailjet\Client($apiKey, $apiSecret, true, ['version' => 'v3.1']);
+            $emailData = [
+                'Messages' => [
+                    [
+                        'From' => [
+                            'Email' => "dbresourcehub@gmail.com",
+                            'Name' => "Dearborn Resource Hub"
+                        ],
+                        'To' => [
+                            [
+                                'Email' => $user['email']
+                            ]
+                        ],
+                        'Subject' => "Password Reset Code",
+                        'TextPart' => "Your password reset code is: $resetCode",
+                        'HTMLPart' => "<h3>Your password reset code is: <strong>$resetCode</strong></h3>"
+                    ]
+                ]
+            ];
+
+            // Send the email
+            $response = $mj->post(Resources::$Email, ['body' => $emailData]);
+
+            if ($response->success()) {
+                $message = "Reset code sent to your email.";
+            } else {
+                $message = "Failed to send email. Error: " . $response->getData()['ErrorMessage'];
+            }
+        } else {
+            $message = "Email not found in our records.";
+        }
+    } else {
+        $message = "Invalid email address.";
+    }
 }
 ?>
 
@@ -40,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In</title>
+    <title>Reset Code</title>
     <style>
         /* body */
         body {
@@ -121,12 +158,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="login-container">
         <h1>Reset Password Code</h1>
         <?php if (!empty($message)): ?>
-            <p class="error"><?php echo htmlspecialchars($message); ?></p>
+            <p class="<?php echo $message === 'Reset code sent to your email.' ? '' : 'error'; ?>">
+                <?php echo htmlspecialchars($message); ?>
+            </p>
         <?php endif; ?>
         <form method="POST">
             <label for="email">Email:</label>
             <input type="email" name="email" id="email" required>
-
             <button type="submit">Send Code</button>
         </form>
         <div class="footer">
