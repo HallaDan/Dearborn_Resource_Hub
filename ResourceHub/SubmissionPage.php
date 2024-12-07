@@ -10,6 +10,37 @@ if (!isset($_SESSION['user_id'])) {
 
 $successMessage = '';
 
+//language switch
+if (isset($_GET['lang'])) {
+    $_SESSION['lang'] = $_GET['lang'];
+} elseif (!isset($_SESSION['lang'])) {
+    $_SESSION['lang'] = 'en'; // default language (for now?)
+}
+
+//generic translations
+$translations = [
+    'en' => [
+        'home_page' => 'Home Page',
+        'business_listings' => 'Find Local Experts',
+        'contribute' => 'Contribute',
+        'sign_out' => 'Sign Out',
+    ],
+    'ar' => [
+        'home_page' => 'الصفحة الرئيسية',
+        'business_listings' => 'ابحث عن خبراء محليين',
+        'contribute' => 'أضف القوائم',
+        'sign_out' => 'تسجيل الخروج',
+    ],
+    'es' => [
+        'home_page' => 'Página de Inicio',
+        'business_listings' => 'Encuentra expertos locales',
+        'contribute' => 'Contribuir listados',
+        'sign_out' => 'Cerrar sesión',
+    ],
+];
+
+$lang = $translations[$_SESSION['lang']];
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     // Fetch form data
     $businessName = $_POST['businessName'];
@@ -53,11 +84,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/styles.css">
     <title>Submit Business</title>
     <style>
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         form {
             width: 300px;
-            margin: 0 auto;
+            margin-left: 90px;
         }
         label, input, select {
             display: block;
@@ -66,7 +103,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     </style>
 </head>
 <body>
-    <div class="container">
+    <header>
+        <div class="nav-container">
+            <h1>Multilingual Resource Hub</h1>
+        </div>
+    </header>
+
+    <div class="hamburger-container">
+        <div class="dropdown">
+            <button class="dropdown-toggle">☰</button>
+            <ul class="hamburger-menu">
+                <li><a href="HomePage.php"><?= $lang['home_page'] ?></a></li>
+                <li><a href="BusinessListingPage.php"><?= $lang['business_listings'] ?></a></li>
+                <li><a href="SignOut.php"><?= $lang['sign_out'] ?></a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="center-content">
         <h2>Submit Business</h2>
         <?php if ($successMessage): ?>
             <div class="alert alert-success" role="alert">
@@ -100,5 +154,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
             <input type="submit" name="submit" value="Submit" class="btn btn-primary">
         </form>
     </div>
+    <script src="assets/js/script.js"></script>
 </body>
 </html>
